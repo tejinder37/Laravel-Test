@@ -13,6 +13,8 @@ class TaskController extends Controller
      */
     public function index()
     {
+        $users = User::with('tasks')->get();
+        return view('tasks', compact('users'));
     }
 
     /**
@@ -20,7 +22,8 @@ class TaskController extends Controller
      */
     public function create()
     {
-        return view('task');
+        $users = User::all();
+        return view('task', compact('users'));
     }
 
     /**
@@ -29,22 +32,30 @@ class TaskController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required',
+            'name' => 'required|string|max:255',
             'number' => 'required',
+            'user_id' => 'nullable|exists:users,id',
         ]);
 
+        // Create a new task instance with the input data
         $task = new Task([
             'name' => $request->input('name'),
-            'number' => $request->input('number')
+            'number' => $request->input('number'),
         ]);
-        $task->save();
-        
-        $user = User::orderBy('created_at','asc')->first();
-        $task->assignedUser()->associate($user);
-        $task->save();
-        return redirect()->back();
-    }
 
+        // If user_id is provided, assign the task to the user
+        if ($request->has('user_id')) {
+            $user = User::find($request->input('user_id'));
+            if ($user) {
+                $task->user_id = $user->id;
+            }
+        }
+
+        // Save the task
+        $task->save();
+
+        return redirect()->route('tasks.create')->with('success', 'Task created and assigned successfully.');
+    }
     /**
      * Display the specified resource.
      */
